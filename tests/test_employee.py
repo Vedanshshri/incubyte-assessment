@@ -176,3 +176,115 @@ class TestEmployeeCRUD:
         })
         
         assert response.status_code == 422
+
+    # --- Edge case tests ---
+
+    def test_get_all_employees_empty_database(self, client):
+        """Test getting employees when database is empty returns empty list"""
+        response = client.get('/api/employees')
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_create_employee_empty_name(self, client):
+        """Test that empty full_name is rejected"""
+        response = client.post('/api/employees', json={
+            'full_name': '',
+            'job_title': 'Developer',
+            'country': 'India',
+            'salary': 50000
+        })
+        assert response.status_code == 422
+
+    def test_create_employee_whitespace_name(self, client):
+        """Test that whitespace-only full_name is rejected"""
+        response = client.post('/api/employees', json={
+            'full_name': '   ',
+            'job_title': 'Developer',
+            'country': 'India',
+            'salary': 50000
+        })
+        assert response.status_code == 422
+
+    def test_create_employee_empty_job_title(self, client):
+        """Test that empty job_title is rejected"""
+        response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': '',
+            'country': 'India',
+            'salary': 50000
+        })
+        assert response.status_code == 422
+
+    def test_create_employee_empty_country(self, client):
+        """Test that empty country is rejected"""
+        response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': 'Developer',
+            'country': '',
+            'salary': 50000
+        })
+        assert response.status_code == 422
+
+    def test_update_employee_empty_name(self, client):
+        """Test that updating full_name to empty string is rejected"""
+        create_response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': 'Software Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        employee_id = create_response.json()['id']
+
+        response = client.put(f'/api/employees/{employee_id}', json={
+            'full_name': ''
+        })
+        assert response.status_code == 422
+
+    def test_update_employee_whitespace_name(self, client):
+        """Test that updating full_name to whitespace-only string is rejected"""
+        create_response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': 'Software Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        employee_id = create_response.json()['id']
+
+        response = client.put(f'/api/employees/{employee_id}', json={
+            'full_name': '   '
+        })
+        assert response.status_code == 422
+
+    def test_update_employee_no_fields_is_noop(self, client):
+        """Test that updating with empty body leaves employee unchanged"""
+        create_response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': 'Software Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        employee_id = create_response.json()['id']
+
+        response = client.put(f'/api/employees/{employee_id}', json={})
+        assert response.status_code == 200
+        data = response.json()
+        assert data['full_name'] == 'John Doe'
+        assert data['salary'] == 50000
+
+    def test_get_employee_invalid_id_type(self, client):
+        """Test that a non-integer employee ID returns 422"""
+        response = client.get('/api/employees/abc')
+        assert response.status_code == 422
+
+    def test_employee_response_has_timestamps(self, client):
+        """Test that created employee response includes timestamps"""
+        response = client.post('/api/employees', json={
+            'full_name': 'John Doe',
+            'job_title': 'Software Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert 'created_at' in data
+        assert data['created_at'] is not None
