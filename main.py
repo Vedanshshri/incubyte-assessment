@@ -1,6 +1,6 @@
 """Entry point for FastAPI application"""
 from fastapi import FastAPI
-from app.routes import employee
+from app.routes import employee, salary
 from app.database import engine
 from app.models import Base
 
@@ -15,6 +15,7 @@ app = FastAPI(
 )
 
 app.include_router(employee.router, prefix='/api/employees', tags=['employees'])
+app.include_router(salary.router, prefix='/api/salary', tags=['salary'])
 
 if __name__ == '__main__':
     import uvicorn
