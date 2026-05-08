@@ -1,19 +1,23 @@
-from pydantic import BaseModel, ConfigDict, Field
+﻿from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
 class EmployeeCreate(BaseModel):
     """Schema for creating an employee"""
-    full_name: str
-    job_title: str
-    country: str
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+
+    full_name: str = Field(min_length=1)
+    job_title: str = Field(min_length=1)
+    country: str = Field(min_length=1)
     salary: float = Field(gt=0, description="Salary must be a positive number")
 
 class EmployeeUpdate(BaseModel):
     """Schema for updating an employee"""
-    full_name: Optional[str] = None
-    job_title: Optional[str] = None
-    country: Optional[str] = None
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    full_name: Optional[str] = Field(None, min_length=1)
+    job_title: Optional[str] = Field(None, min_length=1)
+    country: Optional[str] = Field(None, min_length=1)
     salary: Optional[float] = Field(None, gt=0, description="Salary must be a positive number")
 
 class EmployeeResponse(BaseModel):
@@ -25,14 +29,14 @@ class EmployeeResponse(BaseModel):
     salary: float
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
 
-class SalaryCalculationRequest(BaseModel):
-    """Schema for salary calculation request"""
-    gross_salary: float = Field(gt=0, description="Gross salary must be a positive number")
-
-class SalaryCalculationRe
+class SalaryCalculationResponse(BaseModel):
+    """Schema for salary calculation response"""
+    employee_id: int
+    gross_salary: float
+    country: str
     deduction_rate: float
     deductions: float
     net_salary: float
