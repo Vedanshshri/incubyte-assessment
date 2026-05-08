@@ -87,7 +87,6 @@ class TestSalaryMetrics:
         data = response.json()
         assert data['job_title'] == 'Software Engineer'
         assert data['count'] == 4
-        # Average of 50000, 60000, 110000, 75000 = 73750
         assert data['average_salary'] == 73750.0
     
     def test_job_title_metrics_product_manager(self, client):
@@ -130,3 +129,107 @@ class TestSalaryMetrics:
         response = client.get('/api/salary/metrics/job-title/NonExistentRole')
         
         assert response.status_code == 404
+    
+    def test_country_single_employee(self, client):
+        """Test country metrics with single employee"""
+        client.post('/api/employees', json={
+            'full_name': 'David Green',
+            'job_title': 'Software Engineer',
+            'country': 'United Kingdom',
+            'salary': 55000
+        })
+        
+        response = client.get('/api/salary/metrics/country/United Kingdom')
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 1
+        assert data['minimum_salary'] == 55000
+        assert data['maximum_salary'] == 55000
+        assert data['average_salary'] == 55000.0
+
+    # --- Edge case tests ---
+
+    def test_country_metrics_case_insensitive(self, client):
+        """Test that country lookup is case-insensitive"""
+        client.post('/api/employees', json={
+            'full_name': 'Raj Kumar',
+            'job_title': 'Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        response = client.get('/api/salary/metrics/country/india')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 1
+
+    def test_job_title_metrics_case_insensitive(self, client):
+        """Test that job title lookup is case-insensitive"""
+        client.post('/api/employees', json={
+            'full_name': 'Raj Kumar',
+            'job_title': 'Software Engineer',
+            'country': 'India',
+            'salary': 50000
+        })
+        response = client.get('/api/salary/metrics/job-title/software engineer')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 1
+
+    def test_country_metrics_average_precision(self, client):
+        """Test average salary with non-round division result"""
+        employees_data = [
+            {'full_name': 'A', 'job_title': 'Dev', 'country': 'Germany', 'salary': 10000},
+            {'full_name': 'B', 'job_title': 'Dev', 'country': 'Germany', 'salary': 20000},
+            {'full_name': 'C', 'job_title': 'Dev', 'country': 'Germany', 'salary': 30001},
+        ]
+        for emp in employees_data:
+            client.post('/api/employees', json=emp)
+
+        response = client.get('/api/salary/metrics/country/Germany')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['average_salary'] == round((10000 + 20000 + 30001) / 3, 2)
+        assert data['minimum_salary'] == 10000
+        assert data['maximum_salary'] == 30001
+
+    def test_job_title_metrics_average_precision(self, client):
+        """Test average salary precision for job title with non-round result"""
+        employees_data = [
+            {'full_name': 'A', 'job_title': 'Analyst', 'country': 'India', 'salary': 10000},
+            {'full_name': 'B', 'job_title': 'Analyst', 'country': 'India', 'salary': 20000},
+            {'full_name': 'C', 'job_title': 'Analyst', 'country': 'India', 'salary': 30001},
+        ]
+        for emp in employees_data:
+            client.post('/api/employees', json=emp)
+
+        response = client.get('/api/salary/metrics/job-title/Analyst')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['average_salary'] == round((10000 + 20000 + 30001) / 3, 2)
+
+    def test_country_metrics_response_structure(self, client):
+        """Test that country metrics response contains all expected fields"""
+        client.post('/api/employees', json={
+            'full_name': 'Test',
+            'job_title': 'Dev',
+            'country': 'France',
+            'salary': 50000
+        })
+        response = client.get('/api/salary/metrics/country/France')
+        assert response.status_code == 200
+        data = response.json()
+        assert set(data.keys()) == {'country', 'count', 'minimum_salary', 'maximum_salary', 'average_salary'}
+
+    def test_job_title_metrics_response_structure(self, client):
+        """Test that job title metrics response contains all expected fields"""
+        client.post('/api/employees', json={
+            'full_name': 'Test',
+            'job_title': 'QA Engineer',
+            'country': 'India',
+            'salary': 40000
+        })
+        response = client.get('/api/salary/metrics/job-title/QA Engineer')
+        assert response.status_code == 200
+        data = response.json()
+        assert set(data.keys()) == {'job_title', 'count', 'average_salary'}
